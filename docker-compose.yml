@@ -1,0 +1,17 @@
+version: '2.1'
+
+services:
+  breakfast:
+    build: ./integration/Breakfast.Api
+    depends_on:
+      - mongo
+    environment:
+      - CONNECTIONSTRINGS__MONGO=mongodb://mongo/breakfast
+      
+  mongo:
+    image: mongo:3.6
+
+  newman:
+    build: ./integration/Newman
+    depends_on:
+      - breakfast
