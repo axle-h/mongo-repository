@@ -105,11 +105,12 @@ namespace MongoDB.Extensions.Repository
         /// <param name="id">The identifier.</param>
         /// <param name="updateDefinition">The update definition.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
+        /// <param name="options">The options.</param>
         /// <returns></returns>
-        protected async Task<TEntity> UpdateAsync(string id, UpdateDefinition<TEntity> updateDefinition, CancellationToken cancellationToken)
+        protected async Task<TEntity> UpdateAsync(string id, UpdateDefinition<TEntity> updateDefinition, CancellationToken cancellationToken, FindOneAndUpdateOptions<TEntity> options = null)
         {
             var collection = await GetCollectionAsync(cancellationToken);
-            return await collection.FindOneAndUpdateAsync(Filter.IdEq(id), updateDefinition, cancellationToken: cancellationToken);
+            return await collection.FindOneAndUpdateAsync(Filter.IdEq(id), updateDefinition, options, cancellationToken);
         }
 
         protected async Task<TEntity> FindOneAsync(FilterDefinition<TEntity> filter, CancellationToken cancellationToken, FindOptions<TEntity> options = null)
@@ -138,5 +139,11 @@ namespace MongoDB.Extensions.Repository
         }
 
         protected static FilterDefinitionBuilder<TEntity> Filter { get; } = Builders<TEntity>.Filter;
+
+        protected static SortDefinitionBuilder<TEntity> Sort { get; } = Builders<TEntity>.Sort;
+
+        protected static UpdateDefinitionBuilder<TEntity> Update { get; } = Builders<TEntity>.Update;
+
+        protected static ProjectionDefinitionBuilder<TEntity> Projection { get; } = Builders<TEntity>.Projection;
     }
 }
