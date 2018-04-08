@@ -19,7 +19,10 @@ namespace MongoDB.Extensions.Repository
     public class MongoContext : IMongoContext, IDisposable
     {
         private readonly SemaphoreSlim _semaphore;
-        private readonly Lazy<Task<IMongoDatabase>> _database;
+        private readonly MongoUrl _url;
+        private readonly MongoConfiguration _options;
+        private readonly IEnumerable<IMongoIndexProfile> _indexBuilders;
+        private IMongoDatabase _database;
         private bool _disposed;
 
         /// <summary>
@@ -29,29 +32,22 @@ namespace MongoDB.Extensions.Repository
         /// <param name="indexBuilders">The index builders.</param>
         public MongoContext(IOptions<MongoConfiguration> options, IEnumerable<IMongoIndexProfile> indexBuilders)
         {
+            _indexBuilders = indexBuilders;
+            _options = options.Value;
+
             var connectionString = options.Value.ConnectionString;
             if (string.IsNullOrEmpty(connectionString))
             {
                 throw new ArgumentNullException(nameof(connectionString), "Must provide a mongo connection string");
             }
 
-            var url = new MongoUrl(connectionString);
-            if (string.IsNullOrEmpty(url.DatabaseName))
+            _url = new MongoUrl(connectionString);
+            if (string.IsNullOrEmpty(_url.DatabaseName))
             {
                 throw new ArgumentNullException(nameof(connectionString), "Must provide a database name with the mongo connection string");
             }
 
             _semaphore = new SemaphoreSlim(1, 1);
-            _database = new Lazy<Task<IMongoDatabase>>(async () =>
-                                                       {
-                                                           var database = new MongoClient(MongoClientSettings.FromUrl(url)).GetDatabase(url.DatabaseName);
-
-                                                           var tasks = indexBuilders.Select(b => b.CreateIndexesAsync(database, options.Value));
-                                                           await Task.WhenAll(tasks);
-
-                                                           return database;
-                                                       },
-                                                       LazyThreadSafetyMode.PublicationOnly);
         }
 
         /// <summary>
@@ -71,8 +67,13 @@ namespace MongoDB.Extensions.Repository
             {
                 await _semaphore.WaitAsync(cancellationToken);
                 var collectionName = typeof(TEntity).Name.Pluralize().Underscore();
-                var database = await _database.Value;
-                return database.GetCollection<TEntity>(collectionName);
+                if (_database == null)
+                {
+                    _database = new MongoClient(MongoClientSettings.FromUrl(_url)).GetDatabase(_url.DatabaseName);
+                    var tasks = _indexBuilders.Select(b => b.CreateIndexesAsync(_database, _options, cancellationToken));
+                    await Task.WhenAll(tasks);
+                }
+                return _database.GetCollection<TEntity>(collectionName);
             }
             finally
             {
@@ -96,10 +97,7 @@ namespace MongoDB.Extensions.Repository
             }
 
             _semaphore.Dispose();
-            if (_database.IsValueCreated)
-            {
-                _database.Value.Result.Client.Cluster.Dispose();
-            }
+            _database?.Client.Cluster.Dispose();
         }
     }
 }

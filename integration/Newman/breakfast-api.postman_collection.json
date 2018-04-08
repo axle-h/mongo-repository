@@ -1269,7 +1269,117 @@
 					"response": []
 				},
 				{
-					"name": "When deleting bacon breakfast review",
+					"name": "When updating breakfast review rating",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "e8a1c9f6-b9db-468f-9dde-26c88f27e6de",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"response is ok\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"response should be json\", function () { ",
+									"    pm.response.to.be.json;",
+									"});",
+									"",
+									"pm.test(\"response should have correct username\", function () { ",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property(\"username\").that.is.equal(\"alex\");",
+									"});",
+									"",
+									"pm.test(\"response should have correct rating\", function () { ",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property(\"rating\").that.is.equal(1);",
+									"});",
+									"",
+									"pm.test(\"response should have an id\", function () { ",
+									"    var jsonData = pm.response.json();",
+									"    var expected = pm.environment.get(\"review_id\");",
+									"    pm.expect(jsonData).to.have.property(\"id\").that.is.equal(expected);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"rating\": 1\n}"
+						},
+						"url": {
+							"raw": "{{url}}/api/BreakfastReview/{{review_id}}/rating",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"api",
+								"BreakfastReview",
+								"{{review_id}}",
+								"rating"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "When attempting to update non-existent breakfast review rating",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "cc5fe45e-3967-493c-a642-baab4aafe56b",
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"response is not found\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});",
+									"",
+									"pm.test(\"response should be json\", function () { ",
+									"    pm.response.to.be.json;",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"rating\": 1\n}"
+						},
+						"url": {
+							"raw": "{{url}}/api/BreakfastReview/123456/rating",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"api",
+								"BreakfastReview",
+								"123456",
+								"rating"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "When deleting breakfast review",
 					"event": [
 						{
 							"listen": "test",
@@ -1381,7 +1491,7 @@
 						{
 							"listen": "test",
 							"script": {
-								"id": "33964398-5f0a-4832-970a-9a265c9e3a33",
+								"id": "7491b2fe-ce01-4982-8b3e-ff0ed03037e9",
 								"type": "text/javascript",
 								"exec": [
 									"pm.test(\"response is ok\", function () {",
@@ -1399,7 +1509,7 @@
 									"",
 									"pm.test(\"response should have correct rating\", function () { ",
 									"    var jsonData = pm.response.json();",
-									"    pm.expect(jsonData).to.have.property(\"rating\").that.is.equal(10);",
+									"    pm.expect(jsonData).to.have.property(\"rating\").that.is.equal(1);",
 									"});",
 									"",
 									"pm.test(\"response should have an id\", function () { ",

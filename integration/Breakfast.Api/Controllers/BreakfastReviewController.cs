@@ -60,5 +60,16 @@ namespace Breakfast.Api.Controllers
         /// <returns></returns>
         [HttpPut("{id}/un-delete")]
         public async Task UnDeleteBreakfastReviewAsync(string id) => await _service.UnDeleteAsync(id);
+
+        /// <summary>
+        /// Updates the breakfast review with the specified identifier.
+        /// </summary>
+        /// <param name="id">The identifier.</param>
+        /// <param name="request">The request.</param>
+        /// <returns></returns>
+        [HttpPut("{id}/rating")]
+        [ValidateModel]
+        public async Task<BreakfastReviewViewModel> UpdateAsync(string id, [FromBody] UpdateBreakfastReviewRatingRequest request) =>
+            await _service.UpdateRatingAsync(id, request);
     }
 }

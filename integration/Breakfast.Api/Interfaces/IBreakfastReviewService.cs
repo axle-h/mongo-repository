@@ -39,5 +39,13 @@ namespace Breakfast.Api.Interfaces
         /// <param name="id">The identifier.</param>
         /// <returns></returns>
         Task DeleteAsync(string id);
+
+        /// <summary>
+        /// Updates the breakfast review with the specified identifier.
+        /// </summary>
+        /// <param name="id">The identifier.</param>
+        /// <param name="request">The request.</param>
+        /// <returns></returns>
+        Task<BreakfastReviewViewModel> UpdateRatingAsync(string id, UpdateBreakfastReviewRatingRequest request);
     }
 }
