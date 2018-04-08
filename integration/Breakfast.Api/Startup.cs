@@ -38,8 +38,7 @@ namespace Breakfast.Api
                                          });
 
             services.AddMongoRepositories(_configuration.GetConnectionString("mongo"))
-                    .FromAssembly(assembly)
-                    .WithIndexesFromAssembly(assembly);
+                    .FromAssembly(assembly);
 
             services.AddTransient<IHttpContextAccessor, HttpContextAccessor>();
             services.AddTransient<IBreakfastItemService, BreakfastItemService>();

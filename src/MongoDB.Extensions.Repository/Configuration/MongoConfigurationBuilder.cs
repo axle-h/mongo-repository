@@ -1,11 +1,7 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
-using MongoDB.Driver;
 using MongoDB.Extensions.Repository.Interfaces;
-using MongoDB.Extensions.Repository.Extensions;
-using MongoDB.Extensions.Repository.Models;
 
 namespace MongoDB.Extensions.Repository.Configuration
 {
@@ -29,12 +25,16 @@ namespace MongoDB.Extensions.Repository.Configuration
         public IServiceCollection Services { get; }
 
         /// <summary>
-        /// Registers all public implementations of <see cref="IMongoRepository{TEntity}"/> in the specified assembly as each of their non-generic interfaces.
+        /// Searches the specified assembly for type and registers them.
+        /// * Registers all public implementations of <see cref="IMongoRepository{TEntity}"/> as each of their non-generic interfaces.
+        /// * Adds indexes defined in public implementations of <see cref="IMongoIndexProfile"/>.
+        /// 
         /// </summary>
         /// <param name="assembly">The assembly.</param>
         /// <returns></returns>
         public MongoConfigurationBuilder FromAssembly(Assembly assembly)
         {
+            // Repositories.
             var repositoryTypes = assembly.ExportedTypes
                                           .Where(t => !t.IsAbstract &&
                                                       !t.IsInterface &&
@@ -48,34 +48,29 @@ namespace MongoDB.Extensions.Repository.Configuration
                 }
 
             }
-            return this;
-        }
 
-        /// <summary>
-        /// Adds indexes defined in the specified index builder type.
-        /// </summary>
-        /// <typeparam name="TIndexBuilder">The type of the index builder.</typeparam>
-        /// <returns></returns>
-        public MongoConfigurationBuilder WithIndexes<TIndexBuilder>()
-            where TIndexBuilder : class, IMongoIndexProfile
-        {
-            Services.AddSingleton<IMongoIndexProfile, TIndexBuilder>();
-            return this;
-        }
-
-        /// <summary>
-        /// Adds indexes defined in public implementations of <see cref="IMongoIndexProfile"/> in the specified assembly.
-        /// </summary>
-        /// <param name="assembly">The assembly.</param>
-        /// <returns></returns>
-        public MongoConfigurationBuilder WithIndexesFromAssembly(Assembly assembly)
-        {
-            var profiles = assembly.ExportedTypes.Where(t => !t.IsAbstract && !t.IsInterface && typeof(IMongoIndexProfile).IsAssignableFrom(t));
-            foreach (var profileType in profiles)
+            // Indexes.
+            var indexes = assembly.ExportedTypes.Where(t => !t.IsAbstract && !t.IsInterface && typeof(IMongoIndexProfile).IsAssignableFrom(t));
+            foreach (var index in indexes)
             {
-                Services.AddSingleton(typeof(IMongoIndexProfile), profileType);
+                Services.AddSingleton(typeof(IMongoIndexProfile), index);
             }
+
+            // Seeds.
+            var seeds = assembly.ExportedTypes.Where(t => !t.IsAbstract && !t.IsInterface && typeof(IMongoSeedProfile).IsAssignableFrom(t));
+            foreach (var seed in seeds)
+            {
+                Services.AddSingleton(typeof(IMongoSeedProfile), seed);
+            }
+
             return this;
         }
+
+        /// <summary>
+        /// Registers all public implementations of <see cref="IMongoRepository{TEntity}"/> as each of their non-generic interfaces.
+        /// Adds indexes defined in public implementations of <see cref="IMongoIndexProfile"/>.
+        /// </summary>
+        /// <returns></returns>
+        public MongoConfigurationBuilder FromAssemblyContaining<T>() => FromAssembly(typeof(T).Assembly);
     }
 }

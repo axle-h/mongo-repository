@@ -21,7 +21,8 @@ namespace MongoDB.Extensions.Repository
         private readonly SemaphoreSlim _semaphore;
         private readonly MongoUrl _url;
         private readonly MongoConfiguration _options;
-        private readonly IEnumerable<IMongoIndexProfile> _indexBuilders;
+        private readonly IEnumerable<IMongoIndexProfile> _indexProfiles;
+        private readonly IEnumerable<IMongoSeedProfile> _seedProfiles;
         private IMongoDatabase _database;
         private bool _disposed;
 
@@ -29,10 +30,14 @@ namespace MongoDB.Extensions.Repository
         /// Initializes a new instance of the <see cref="MongoContext" /> class.
         /// </summary>
         /// <param name="options">The options.</param>
-        /// <param name="indexBuilders">The index builders.</param>
-        public MongoContext(IOptions<MongoConfiguration> options, IEnumerable<IMongoIndexProfile> indexBuilders)
+        /// <param name="indexProfiles">The index builders.</param>
+        /// <param name="seedProfiles">The seed profiles.</param>
+        public MongoContext(IOptions<MongoConfiguration> options,
+                            IEnumerable<IMongoIndexProfile> indexProfiles,
+                            IEnumerable<IMongoSeedProfile> seedProfiles)
         {
-            _indexBuilders = indexBuilders;
+            _indexProfiles = indexProfiles;
+            _seedProfiles = seedProfiles;
             _options = options.Value;
 
             var connectionString = options.Value.ConnectionString;
@@ -70,8 +75,13 @@ namespace MongoDB.Extensions.Repository
                 if (_database == null)
                 {
                     _database = new MongoClient(MongoClientSettings.FromUrl(_url)).GetDatabase(_url.DatabaseName);
-                    var tasks = _indexBuilders.Select(b => b.CreateIndexesAsync(_database, _options, cancellationToken));
-                    await Task.WhenAll(tasks);
+
+                    var indexTasks = _indexProfiles.Select(p => p.CreateIndexesAsync(_database, _options, cancellationToken));
+                    await Task.WhenAll(indexTasks);
+
+                    var seedTasks = _seedProfiles.Select(p => p.CreateSeedsAsync(_database, _options, cancellationToken));
+                    await Task.WhenAll(seedTasks);
+
                 }
                 return _database.GetCollection<TEntity>(collectionName);
             }

@@ -6,17 +6,17 @@ using MongoDB.Extensions.Repository.Configuration;
 namespace MongoDB.Extensions.Repository.Interfaces
 {
     /// <summary>
-    /// A profile for creating mongo indexes.
+    /// A profile for seeding mongo data.
     /// </summary>
-    public interface IMongoIndexProfile
+    public interface IMongoSeedProfile
     {
         /// <summary>
-        /// Creates the configured indexes using the specified mongo database and configuration.
+        /// Creates the configured seed data using the specified mongo database and configuration.
         /// </summary>
         /// <param name="database">The database.</param>
         /// <param name="configuration">The configuration.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        Task CreateIndexesAsync(IMongoDatabase database, MongoConfiguration configuration, CancellationToken cancellationToken = default);
+        Task CreateSeedsAsync(IMongoDatabase database, MongoConfiguration configuration, CancellationToken cancellationToken = default);
     }
 }
