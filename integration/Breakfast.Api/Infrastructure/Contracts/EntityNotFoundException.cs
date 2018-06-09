@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq.Expressions;
 using System.Reflection;
+using Breakfast.Api.Extensions;
 using Humanizer;
 
 namespace Breakfast.Api.Infrastructure.Contracts
@@ -48,10 +49,7 @@ namespace Breakfast.Api.Infrastructure.Contracts
         /// <param name="property">The property.</param>
         /// <param name="key">The key.</param>
         /// <returns></returns>
-        public static EntityNotFoundException Create<TEntity>(Expression<Func<TEntity, object>> property, object key)
-        {
-            var member = property.Body as MemberExpression ?? throw new ArgumentException("not a member expression", nameof(property));
-            return new EntityNotFoundException(typeof(TEntity), member.Member.Name, key);
-        }
+        public static EntityNotFoundException Create<TEntity>(Expression<Func<TEntity, object>> property, object key) =>
+            new EntityNotFoundException(typeof(TEntity), property.GetPropertyInfo().Name, key);
     }
 }

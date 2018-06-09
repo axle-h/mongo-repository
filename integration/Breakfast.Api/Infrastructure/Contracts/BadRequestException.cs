@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Linq.Expressions;
+using Breakfast.Api.Extensions;
 using FluentValidation.Results;
 using Humanizer;
 
@@ -45,8 +46,7 @@ namespace Breakfast.Api.Infrastructure.Contracts
         /// <returns></returns>
         public static BadRequestException Duplicate<TEntity>(Expression<Func<TEntity, object>> property, object value, Exception inner)
         {
-            var member = property.Body as MemberExpression ?? throw new ArgumentException("not a member expression", nameof(property));
-            var name = member.Member.Name;
+            var name = property.GetPropertyInfo().Name;
             return new BadRequestException(inner, new ValidationFailure(name, $"A {typeof(TEntity).Name.Humanize()} already exists with {name.Humanize()} {value}"));
         }
     }
