@@ -34,7 +34,7 @@ namespace MongoDB.Extensions.Repository
         /// <returns></returns>
         public override async Task<bool> DeleteAsync(string id, CancellationToken cancellationToken = default)
         {
-            var deleted = await UpdateAsync(id, Builders<TEntity>.Update.Set(x => x.DateDeleted, DateTime.UtcNow), cancellationToken);
+            var deleted = await UpdateAsync(id, Builders<TEntity>.Update.Set(x => x.DateDeleted, DateTime.UtcNow), null, cancellationToken);
             return deleted?.Id == id;
         }
 
@@ -44,9 +44,9 @@ namespace MongoDB.Extensions.Repository
         /// <param name="id">The identifier.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        public async Task<bool> UnDeleteAsync(string id, CancellationToken cancellationToken = default)
+        public virtual async Task<bool> UnDeleteAsync(string id, CancellationToken cancellationToken = default)
         {
-            var deleted = await UpdateAsync(id, Builders<TEntity>.Update.Unset(x => x.DateDeleted), cancellationToken);
+            var deleted = await UpdateAsync(id, Builders<TEntity>.Update.Unset(x => x.DateDeleted), null, cancellationToken);
             return deleted?.Id == id;
         }
 
@@ -57,13 +57,13 @@ namespace MongoDB.Extensions.Repository
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
         public override async Task<TEntity> GetAsync(string id, CancellationToken cancellationToken = default) =>
-            await FindOneAsync(Filter.NotDeletedAndIdEq(id), cancellationToken);
+            await FindOneAsync(Filter.NotDeletedAndIdEq(id), null, cancellationToken);
 
         /// <summary>
         /// Gets all non-deleted entities in this repository.
         /// </summary>
         /// <returns></returns>
         public override async Task<ICollection<TEntity>> GetAllAsync(CancellationToken cancellationToken = default) =>
-            await FindAsync(Filter.NotDeleted(), cancellationToken);
+            await FindAsync(Filter.NotDeleted(), null, cancellationToken);
     }
 }

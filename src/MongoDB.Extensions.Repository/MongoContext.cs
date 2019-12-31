@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Humanizer;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 using MongoDB.Extensions.Repository.Configuration;
+using MongoDB.Extensions.Repository.Extensions;
 using MongoDB.Extensions.Repository.Interfaces;
+using MongoDB.Extensions.Repository.Models;
 
 namespace MongoDB.Extensions.Repository
 {
@@ -19,26 +21,21 @@ namespace MongoDB.Extensions.Repository
     public class MongoContext : IMongoContext, IDisposable
     {
         private readonly SemaphoreSlim _semaphore;
-        private readonly MongoUrl _url;
-        private readonly MongoConfiguration _options;
-        private readonly IEnumerable<IMongoIndexProfile> _indexProfiles;
-        private readonly IEnumerable<IMongoSeedProfile> _seedProfiles;
-        private IMongoDatabase _database;
+        private readonly IOptions<MongoRepositoryOptions> _options;
+        private readonly IServiceProvider _serviceProvider;
+        private readonly IMongoDatabase _database;
+        private readonly ICollection<Type> _bootstrappedCollections = new List<Type>();
         private bool _disposed;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MongoContext" /> class.
         /// </summary>
         /// <param name="options">The options.</param>
-        /// <param name="indexProfiles">The index builders.</param>
-        /// <param name="seedProfiles">The seed profiles.</param>
-        public MongoContext(IOptions<MongoConfiguration> options,
-                            IEnumerable<IMongoIndexProfile> indexProfiles,
-                            IEnumerable<IMongoSeedProfile> seedProfiles)
+        /// <param name="serviceProvider">The service provider.</param>
+        public MongoContext(IOptions<MongoRepositoryOptions> options, IServiceProvider serviceProvider)
         {
-            _indexProfiles = indexProfiles;
-            _seedProfiles = seedProfiles;
-            _options = options.Value;
+            _options = options;
+            _serviceProvider = serviceProvider;
 
             var connectionString = options.Value.ConnectionString;
             if (string.IsNullOrEmpty(connectionString))
@@ -46,13 +43,14 @@ namespace MongoDB.Extensions.Repository
                 throw new ArgumentNullException(nameof(connectionString), "Must provide a mongo connection string");
             }
 
-            _url = new MongoUrl(connectionString);
-            if (string.IsNullOrEmpty(_url.DatabaseName))
+            var url = new MongoUrl(connectionString);
+            if (string.IsNullOrEmpty(url.DatabaseName))
             {
                 throw new ArgumentNullException(nameof(connectionString), "Must provide a database name with the mongo connection string");
             }
 
             _semaphore = new SemaphoreSlim(1, 1);
+            _database = new MongoClient(MongoClientSettings.FromUrl(url)).GetDatabase(url.DatabaseName);
         }
 
         /// <summary>
@@ -62,6 +60,7 @@ namespace MongoDB.Extensions.Repository
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
         public async Task<IMongoCollection<TEntity>> GetCollectionAsync<TEntity>(CancellationToken cancellationToken = default)
+            where TEntity : MongoEntity
         {
             if (_disposed)
             {
@@ -71,18 +70,45 @@ namespace MongoDB.Extensions.Repository
             try
             {
                 await _semaphore.WaitAsync(cancellationToken);
-                var collectionName = typeof(TEntity).Name.Pluralize().Underscore();
-                if (_database == null)
+                var collectionName = _options.Value.GetCollectionName<TEntity>();
+                var collection = _database.GetCollection<TEntity>(collectionName);
+
+                if (_bootstrappedCollections.Contains(typeof(TEntity)))
                 {
-                    _database = new MongoClient(MongoClientSettings.FromUrl(_url)).GetDatabase(_url.DatabaseName);
-
-                    var indexTasks = _indexProfiles.Select(p => p.CreateIndexesAsync(_database, _options, cancellationToken));
-                    await Task.WhenAll(indexTasks);
-
-                    var seedTasks = _seedProfiles.Select(p => p.CreateSeedsAsync(_database, _options, cancellationToken));
-                    await Task.WhenAll(seedTasks);
-
+                    return collection;
                 }
+                
+                var configurations = _serviceProvider.GetServices<IMongoEntityConfiguration<TEntity>>();
+
+                var builder = new MongoEntityBuilder<TEntity>();
+                foreach (var configuration in configurations)
+                {
+                    configuration.Configure(builder);
+                }
+
+                // Indexes.
+                var indexTasks = builder.Indexes.Select(index =>
+                    collection.Indexes.CreateOneAsync(index, null, cancellationToken));
+                await Task.WhenAll(indexTasks);
+                    
+                // Seeds.
+                var seedTasks = builder.Seed.Select(async seed =>
+                {
+                    var cursor = await collection.FindAsync(
+                        Builders<TEntity>.Filter.IdEq(seed.Id),
+                        cancellationToken: cancellationToken);
+
+                    if (await cursor.AnyAsync(cancellationToken))
+                    {
+                        return;
+                    }
+
+                    await collection.InsertOneAsync(seed, cancellationToken: cancellationToken);
+                });
+                await Task.WhenAll(seedTasks);
+
+                _bootstrappedCollections.Add(typeof(TEntity));
+
                 return _database.GetCollection<TEntity>(collectionName);
             }
             finally
@@ -90,24 +116,31 @@ namespace MongoDB.Extensions.Repository
                 _semaphore.Release();
             }
         }
-
+        
+        /// <summary>
+        /// Drops the collection for the specified entity type.
+        /// </summary>
+        /// <typeparam name="TEntity">The type of the entity.</typeparam>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns></returns>
+        public async Task DropCollectionAsync<TEntity>(CancellationToken cancellationToken = default)
+        {
+            var collectionName = _options.Value.GetCollectionName<TEntity>();
+            await _database.DropCollectionAsync(collectionName, cancellationToken);
+        }
 
         /// <summary>
         /// Releases unmanaged and - optionally - managed resources.
         /// </summary>
         public void Dispose()
         {
-            lock (_semaphore)
+            if (_disposed)
             {
-                if (_disposed)
-                {
-                    return;
-                }
-                _disposed = true;
+                return;
             }
+            _disposed = true;
 
             _semaphore.Dispose();
-            _database?.Client.Cluster.Dispose();
         }
     }
 }

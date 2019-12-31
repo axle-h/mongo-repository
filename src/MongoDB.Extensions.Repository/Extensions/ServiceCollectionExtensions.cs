@@ -19,7 +19,7 @@ namespace MongoDB.Extensions.Repository.Extensions
         /// <remarks>
         /// This currently requires wiring up memory caching and logging.
         /// </remarks>
-        public static MongoConfigurationBuilder AddMongoRepositories(this IServiceCollection services, Action<MongoConfiguration> configurator)
+        public static MongoConfigurationBuilder AddMongoRepositories(this IServiceCollection services, Action<MongoRepositoryOptions> configurator)
         {
             services.Configure(configurator);
             services.AddSingleton<IMongoContext, MongoContext>();

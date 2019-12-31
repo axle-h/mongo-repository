@@ -10,17 +10,17 @@ namespace MongoDB.Extensions.Repository.Extensions
         /// Gets the name of the mongo collection configured for the specified type.
         /// </summary>
         /// <typeparam name="TEntity">The type of the entity.</typeparam>
-        /// <param name="configuration">The configuration.</param>
+        /// <param name="options">The configuration.</param>
         /// <returns></returns>
-        public static string GetCollectionName<TEntity>(this MongoConfiguration configuration)
+        public static string GetCollectionName<TEntity>(this MongoRepositoryOptions options)
         {
             var name = typeof(TEntity).Name;
-            if (configuration.PluralizeCollectionNames)
+            if (options.PluralizeCollectionNames)
             {
                 name = name.Pluralize();
             }
 
-            switch (configuration.CollectionNamingConvention)
+            switch (options.CollectionNamingConvention)
             {
                 case NamingConvention.LowerCase:
                     return name.ToLower();
@@ -38,8 +38,8 @@ namespace MongoDB.Extensions.Repository.Extensions
                     return name.Underscore();
 
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(configuration.CollectionNamingConvention),
-                                                          configuration.CollectionNamingConvention,
+                    throw new ArgumentOutOfRangeException(nameof(options.CollectionNamingConvention),
+                                                          options.CollectionNamingConvention,
                                                           "Unknown collection naming convention");
             }
         }

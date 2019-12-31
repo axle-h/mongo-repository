@@ -1,6 +1,7 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
 using MongoDB.Driver;
+using MongoDB.Extensions.Repository.Models;
 
 namespace MongoDB.Extensions.Repository.Interfaces
 {
@@ -15,6 +16,15 @@ namespace MongoDB.Extensions.Repository.Interfaces
         /// <typeparam name="TEntity">The type of the entity.</typeparam>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        Task<IMongoCollection<TEntity>> GetCollectionAsync<TEntity>(CancellationToken cancellationToken = default);
+        Task<IMongoCollection<TEntity>> GetCollectionAsync<TEntity>(CancellationToken cancellationToken = default)
+            where TEntity : MongoEntity;
+
+        /// <summary>
+        /// Drops the collection for the specified entity type.
+        /// </summary>
+        /// <typeparam name="TEntity">The type of the entity.</typeparam>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns></returns>
+        Task DropCollectionAsync<TEntity>(CancellationToken cancellationToken = default);
     }
 }

@@ -35,29 +35,34 @@ By default, collections will be named in lower `snake_case`.
 
 ## Configuration
 
-Configuration is easy in ASP.Net Core applications. In `Startup.cs`:
+This library uses `Microsoft.Extensions.DependencyInjection`. E.g. in an ASP.Net Core `Startup.cs`.
 
 ```C#
 public void ConfigureServices(IServiceCollection services)
 {
     var assembly = typeof(Startup).Assembly;
     services.AddMongoRepositories(_configuration.GetConnectionString("mongo"))
-            .FromAssembly(assembly) // Registers all classes that implement IMongoRepository<TEntity>
-            .WithIndexesFromAssembly(assembly); // Registers all classes that implement MongoIndexProfile<TEntity>
+            // Registers all classes that implement IMongoRepository<> or IMongoEntityConfiguration<>
+            .FromAssembly(assembly);
 }
 ```
 
-## Indexes
-
-Configured indexes will be created the first time that a collection is accessed.
-To configure indexes, implement `MongoIndexProfile<TEntity>` for example, to create an ascending, case insensitive, unique index on `SomeEntity.Name` called `name_unique`:
+Entity specific configuration is provided via implementations of `IMongoEntityConfiguration<>`.
 
 ```C#
-public class SomeIndexProfile : MongoIndexProfile<SomeEntity>
+public class BreakfastItemEntityConfiguration : IMongoEntityConfiguration<BreakfastItem>
 {
-    public SomeIndexProfile()
+    public void Configure(MongoEntityBuilder<BreakfastItem> context)
     {
-        Add("name_unique", IndexKeys.Ascending(x => x.Name), o => o.Unique().WithCaseInsensitiveCollation());
+        context.Indexes.Add("name_unique",
+            Builders<BreakfastItem>.IndexKeys.Ascending(x => x.Name),
+            o => o.Unique().WithCaseInsensitiveCollation());
+
+        context.Seed.Add(new BreakfastItem
+        {
+            Id = "5e0b29f7a2077ef4078c049b",
+            Name = "Bacon"
+        });
     }
 }
 ```

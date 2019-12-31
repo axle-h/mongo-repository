@@ -1,49 +1,33 @@
-defaults: &netcore
-  docker:
-    - image: microsoft/aspnetcore-build:2.0
-      environment:
-        VERSION_PREFIX: "1.0"
-  working_directory: ~/app
-
 version: 2
 jobs:
-  build:
-    <<: *netcore
+  build-test:
+    docker:
+      - image: mcr.microsoft.com/dotnet/core/sdk:3.1
+        environment:
+          VERSION_PREFIX: "2.0"
+      - image: mongo:3.6
+    working_directory: ~/app
     steps:
       - checkout
       - run:
           name: Build package
           command: |
             export VERSION="${VERSION_PREFIX}.${CIRCLE_BUILD_NUM}"
-            dotnet pack -c Release -o ../../artifacts src/MongoDB.Extensions.Repository /p:PackageVersion=$VERSION /p:Version=$VERSION  /p:AssemblyVersion=$VERSION
+            dotnet pack -c Release -o artifacts src/MongoDB.Extensions.Repository /p:PackageVersion=$VERSION /p:Version=$VERSION  /p:AssemblyVersion=$VERSION
       - run:
-          name: Build integration tests
-          command: dotnet publish -c Release -o bin/publish ./integration/Breakfast.Api
+          name: Test
+          command: dotnet test -c Release test/MongoDB.Extensions.Repository.Tests
+      - run:
+          name: Integration Test
+          command: dotnet test -c Release test/MongoDB.Extensions.Repository.IntegrationTests
       - persist_to_workspace:
           root: ~/app
           paths: .
-
-  unit-tests:
-    <<: *netcore
-    steps:
-      - attach_workspace:
-          at: ~/app
-      - run: dotnet test -c Release ./src/MongoDB.Extensions.Repository.Tests
-
-  integration-tests:
-    docker:
-      - image: docker/compose:1.20.1
-    working_directory: ~/app
-    steps:
-      - attach_workspace:
-          at: ~/app
-      - setup_remote_docker
-      - run:
-          name: Run integration tests
-          command: docker-compose up --build --remove-orphans --force-recreate --abort-on-container-exit --exit-code-from newman
-  
+          
   publish:
-    <<: *netcore
+    docker:
+      - image: mcr.microsoft.com/dotnet/core/sdk:3.1
+    working_directory: ~/app
     steps:
       - attach_workspace:
           at: ~/app
@@ -53,17 +37,10 @@ workflows:
   version: 2
   build-test-publish:
     jobs:
-      - build
-      - unit-tests:
-          requires:
-            - build
-      - integration-tests:
-          requires:
-            - build
+      - build-test
       - publish:
           requires:
-            - unit-tests
-            - integration-tests
+            - build-test
           filters:
             branches:
               only: master

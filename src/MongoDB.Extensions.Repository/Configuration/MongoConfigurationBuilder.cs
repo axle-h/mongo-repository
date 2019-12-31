@@ -1,4 +1,6 @@
-﻿using System.Linq;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Extensions.Repository.Interfaces;
@@ -11,7 +13,7 @@ namespace MongoDB.Extensions.Repository.Configuration
     public class MongoConfigurationBuilder
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="MongoConfigurationBuilder"/> class.
+        /// Initializes a new instance of the <see cref="MongoConfigurationBuilder" /> class.
         /// </summary>
         /// <param name="services">The services.</param>
         public MongoConfigurationBuilder(IServiceCollection services)
@@ -27,40 +29,27 @@ namespace MongoDB.Extensions.Repository.Configuration
         /// <summary>
         /// Searches the specified assembly for type and registers them.
         /// * Registers all public implementations of <see cref="IMongoRepository{TEntity}"/> as each of their non-generic interfaces.
-        /// * Adds indexes defined in public implementations of <see cref="IMongoIndexProfile"/>.
-        /// 
+        /// * Adds entity configuration provided by implementations of <see cref="IMongoEntityConfiguration{TEntity}"/>.
         /// </summary>
         /// <param name="assembly">The assembly.</param>
         /// <returns></returns>
         public MongoConfigurationBuilder FromAssembly(Assembly assembly)
         {
             // Repositories.
-            var repositoryTypes = assembly.ExportedTypes
-                                          .Where(t => !t.IsAbstract &&
-                                                      !t.IsInterface &&
-                                                      t.GetInterfaces().Any(i => i.IsGenericType &&
-                                                                                 i.GetGenericTypeDefinition() == typeof(IMongoRepository<>)));
-            foreach (var repositoryType in repositoryTypes)
+            foreach (var (repositoryType, _) in GetWithGenericInterface(assembly, typeof(IMongoRepository<>)))
             {
                 foreach (var i in repositoryType.GetInterfaces().Where(i => !i.IsGenericType))
                 {
                     Services.AddTransient(i, repositoryType);
                 }
-
             }
 
-            // Indexes.
-            var indexes = assembly.ExportedTypes.Where(t => !t.IsAbstract && !t.IsInterface && typeof(IMongoIndexProfile).IsAssignableFrom(t));
-            foreach (var index in indexes)
+            // Configuration
+            foreach (var (configurationType, entityType) in GetWithGenericInterface(assembly, typeof(IMongoEntityConfiguration<>)))
             {
-                Services.AddSingleton(typeof(IMongoIndexProfile), index);
-            }
-
-            // Seeds.
-            var seeds = assembly.ExportedTypes.Where(t => !t.IsAbstract && !t.IsInterface && typeof(IMongoSeedProfile).IsAssignableFrom(t));
-            foreach (var seed in seeds)
-            {
-                Services.AddSingleton(typeof(IMongoSeedProfile), seed);
+                Services.AddTransient(
+                    typeof(IMongoEntityConfiguration<>).MakeGenericType(entityType),
+                    configurationType);
             }
 
             return this;
@@ -68,9 +57,21 @@ namespace MongoDB.Extensions.Repository.Configuration
 
         /// <summary>
         /// Registers all public implementations of <see cref="IMongoRepository{TEntity}"/> as each of their non-generic interfaces.
-        /// Adds indexes defined in public implementations of <see cref="IMongoIndexProfile"/>.
+        /// Adds indexes defined in public implementations of <see cref="IMongoEntityConfiguration{TEntity}"/>.
         /// </summary>
         /// <returns></returns>
         public MongoConfigurationBuilder FromAssemblyContaining<T>() => FromAssembly(typeof(T).Assembly);
+
+        private static IEnumerable<(Type type, Type genericType)> GetWithGenericInterface(Assembly assembly, Type genericTypeDefinition) =>
+            assembly.ExportedTypes
+                .Where(t => t.IsClass && !t.IsAbstract && !t.IsInterface)
+                .Select(t =>
+                {
+                    var genericInterface = t.GetInterfaces()
+                        .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == genericTypeDefinition);
+
+                    return genericInterface == null ? default : (t, genericInterface.GenericTypeArguments.First());
+                })
+                .Where(x => x != default);
     }
 }
