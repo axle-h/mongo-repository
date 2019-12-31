@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -24,7 +25,7 @@ namespace MongoDB.Extensions.Repository
         private readonly IOptions<MongoRepositoryOptions> _options;
         private readonly IServiceProvider _serviceProvider;
         private readonly IMongoDatabase _database;
-        private readonly ICollection<Type> _bootstrappedCollections = new List<Type>();
+        private readonly ConcurrentBag<Type> _bootstrappedCollections = new ConcurrentBag<Type>();
         private bool _disposed;
 
         /// <summary>
@@ -67,17 +68,23 @@ namespace MongoDB.Extensions.Repository
                 throw new ObjectDisposedException(nameof(MongoContext));
             }
 
+            var collectionName = _options.Value.GetCollectionName<TEntity>();
+            var collection = _database.GetCollection<TEntity>(collectionName);
+
+            if (_bootstrappedCollections.Contains(typeof(TEntity)))
+            {
+                return collection;
+            }
+
             try
             {
                 await _semaphore.WaitAsync(cancellationToken);
-                var collectionName = _options.Value.GetCollectionName<TEntity>();
-                var collection = _database.GetCollection<TEntity>(collectionName);
 
                 if (_bootstrappedCollections.Contains(typeof(TEntity)))
                 {
                     return collection;
                 }
-                
+
                 var configurations = _serviceProvider.GetServices<IMongoEntityConfiguration<TEntity>>();
 
                 var builder = new MongoEntityBuilder<TEntity>();
@@ -109,7 +116,7 @@ namespace MongoDB.Extensions.Repository
 
                 _bootstrappedCollections.Add(typeof(TEntity));
 
-                return _database.GetCollection<TEntity>(collectionName);
+                return collection;
             }
             finally
             {

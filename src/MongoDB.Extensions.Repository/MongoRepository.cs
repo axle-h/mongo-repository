@@ -16,7 +16,7 @@ namespace MongoDB.Extensions.Repository
     public class MongoRepository<TEntity> : IMongoRepository<TEntity>
         where TEntity : MongoEntity
     {
-        private readonly Lazy<Task<IMongoCollection<TEntity>>> _collection;
+        private readonly IMongoContext _context;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MongoRepository{TEntity}"/> class.
@@ -24,9 +24,7 @@ namespace MongoDB.Extensions.Repository
         /// <param name="context">The context.</param>
         public MongoRepository(IMongoContext context)
         {
-            _collection = new Lazy<Task<IMongoCollection<TEntity>>>(
-                () => context.GetCollectionAsync<TEntity>(CancellationToken.None),
-                LazyThreadSafetyMode.ExecutionAndPublication);
+            _context = context;
         }
 
         /// <summary>
@@ -53,7 +51,7 @@ namespace MongoDB.Extensions.Repository
         /// <returns></returns>
         public virtual async Task AddAsync(TEntity entity, CancellationToken cancellationToken = default)
         {
-            var collection = await _collection.Value;
+            var collection = await GetCollectionAsync(cancellationToken);
             await collection.InsertOneAsync(entity, cancellationToken: cancellationToken);
         }
 
@@ -65,7 +63,7 @@ namespace MongoDB.Extensions.Repository
         /// <returns></returns>
         public virtual async Task AddManyAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
         {
-            var collection = await _collection.Value;
+            var collection = await GetCollectionAsync(cancellationToken);
             await collection.InsertManyAsync(entities, cancellationToken: cancellationToken);
         }
 
@@ -77,7 +75,7 @@ namespace MongoDB.Extensions.Repository
         /// <returns></returns>
         public virtual async Task<bool> DeleteAsync(string id, CancellationToken cancellationToken = default)
         {
-            var collection = await _collection.Value;
+            var collection = await GetCollectionAsync(cancellationToken);
             var result = await collection.FindOneAndDeleteAsync(Filter.IdEq(id), cancellationToken: cancellationToken);
             return result?.Id == id;
         }
@@ -95,7 +93,7 @@ namespace MongoDB.Extensions.Repository
                 throw new ArgumentNullException(nameof(entity));
             }
 
-            var collection = await _collection.Value;
+            var collection = await GetCollectionAsync(cancellationToken);
             return await collection.FindOneAndReplaceAsync(
                 Filter.IdEq(entity.Id), entity,
                 new FindOneAndReplaceOptions<TEntity> { ReturnDocument = ReturnDocument.After },
@@ -112,7 +110,7 @@ namespace MongoDB.Extensions.Repository
         /// <returns></returns>
         protected async Task<TEntity> UpdateAsync(string id, UpdateDefinition<TEntity> updateDefinition, FindOneAndUpdateOptions<TEntity> options = null, CancellationToken cancellationToken = default)
         {
-            var collection = await _collection.Value;
+            var collection = await GetCollectionAsync(cancellationToken);
             return await collection.FindOneAndUpdateAsync(Filter.IdEq(id), updateDefinition, options, cancellationToken);
         }
 
@@ -125,7 +123,7 @@ namespace MongoDB.Extensions.Repository
         /// <returns></returns>
         protected async Task<TEntity> FindOneAsync(FilterDefinition<TEntity> filter, FindOptions<TEntity> options = null, CancellationToken cancellationToken = default)
         {
-            var collection = await _collection.Value;
+            var collection = await GetCollectionAsync(cancellationToken);
             var cursor = await collection.FindAsync(filter, options, cancellationToken);
             return await cursor.FirstOrDefaultAsync(cancellationToken);
         }
@@ -139,11 +137,20 @@ namespace MongoDB.Extensions.Repository
         /// <returns></returns>
         protected async Task<ICollection<TEntity>> FindAsync(FilterDefinition<TEntity> filter, FindOptions<TEntity> options = null, CancellationToken cancellationToken = default)
         {
-            var collection = await _collection.Value;
+            var collection = await GetCollectionAsync(cancellationToken);
             var cursor = await collection.FindAsync(filter, options, cancellationToken);
             return await cursor.ToListAsync(cancellationToken);
         }
-        
+
+        /// <summary>
+        /// Gets the Mongo collection that backs this repository.
+        /// </summary>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns></returns>
+        protected async Task<IMongoCollection<TEntity>> GetCollectionAsync(CancellationToken cancellationToken = default) =>
+            await _context.GetCollectionAsync<TEntity>(cancellationToken);
+
+
         protected static FilterDefinitionBuilder<TEntity> Filter => Builders<TEntity>.Filter;
 
         protected static SortDefinitionBuilder<TEntity> Sort => Builders<TEntity>.Sort;
