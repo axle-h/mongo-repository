@@ -33,7 +33,7 @@ namespace MongoDB.Extensions.Repository
         /// <param name="id">The identifier.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        public virtual async Task<TEntity> GetAsync(string id, CancellationToken cancellationToken = default) =>
+        public virtual async Task<TEntity?> GetAsync(string id, CancellationToken cancellationToken = default) =>
             await FindOneAsync(Filter.IdEq(id), null, cancellationToken);
 
         /// <summary>
@@ -108,7 +108,7 @@ namespace MongoDB.Extensions.Repository
         /// <param name="options">The options.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        protected async Task<TEntity> UpdateAsync(string id, UpdateDefinition<TEntity> updateDefinition, FindOneAndUpdateOptions<TEntity> options = null, CancellationToken cancellationToken = default)
+        protected async Task<TEntity> UpdateAsync(string id, UpdateDefinition<TEntity> updateDefinition, FindOneAndUpdateOptions<TEntity>? options = null, CancellationToken cancellationToken = default)
         {
             var collection = await GetCollectionAsync(cancellationToken);
             return await collection.FindOneAndUpdateAsync(Filter.IdEq(id), updateDefinition, options, cancellationToken);
@@ -121,7 +121,7 @@ namespace MongoDB.Extensions.Repository
         /// <param name="options">The options.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        protected async Task<TEntity> FindOneAsync(FilterDefinition<TEntity> filter, FindOptions<TEntity> options = null, CancellationToken cancellationToken = default)
+        protected async Task<TEntity> FindOneAsync(FilterDefinition<TEntity> filter, FindOptions<TEntity>? options = null, CancellationToken cancellationToken = default)
         {
             var collection = await GetCollectionAsync(cancellationToken);
             var cursor = await collection.FindAsync(filter, options, cancellationToken);
@@ -135,7 +135,7 @@ namespace MongoDB.Extensions.Repository
         /// <param name="options">The options.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        protected async Task<ICollection<TEntity>> FindAsync(FilterDefinition<TEntity> filter, FindOptions<TEntity> options = null, CancellationToken cancellationToken = default)
+        protected async Task<ICollection<TEntity>> FindAsync(FilterDefinition<TEntity> filter, FindOptions<TEntity>? options = null, CancellationToken cancellationToken = default)
         {
             var collection = await GetCollectionAsync(cancellationToken);
             var cursor = await collection.FindAsync(filter, options, cancellationToken);
