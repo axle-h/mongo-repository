@@ -18,7 +18,7 @@ namespace MongoDB.Extensions.Repository.Interfaces
         /// <param name="id">The identifier.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        Task<TEntity> GetAsync(string id, CancellationToken cancellationToken = default);
+        Task<TEntity?> GetAsync(string id, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets all entities in this repository.

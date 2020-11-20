@@ -22,7 +22,7 @@ namespace MongoDB.Extensions.Repository.Extensions
             this MongoIndexContext<TEntity> context,
             string name,
             IndexKeysDefinition<TEntity> keys,
-            Action<CreateIndexOptions> optionsConfigurator = null)
+            Action<CreateIndexOptions>? optionsConfigurator = null)
             where TEntity : MongoEntity
         {
             var options = new CreateIndexOptions { Name = name };
@@ -52,7 +52,7 @@ namespace MongoDB.Extensions.Repository.Extensions
             where TEntity : ExpiringMongoEntity
         {
             context.Add("date_created",
-                Builders<TEntity>.IndexKeys.Ascending(x => x.DateCreated), 
+                Builders<TEntity>.IndexKeys.Ascending(x => x.DateCreated),
                 o => o.ExpireAfter(expireAfter));
         }
     }

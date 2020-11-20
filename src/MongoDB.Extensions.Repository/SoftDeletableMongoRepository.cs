@@ -56,7 +56,7 @@ namespace MongoDB.Extensions.Repository
         /// <param name="id">The identifier.</param>
         /// <param name="cancellationToken">The cancellation token.</param>
         /// <returns></returns>
-        public override async Task<TEntity> GetAsync(string id, CancellationToken cancellationToken = default) =>
+        public override async Task<TEntity?> GetAsync(string id, CancellationToken cancellationToken = default) =>
             await FindOneAsync(Filter.NotDeletedAndIdEq(id), null, cancellationToken);
 
         /// <summary>
