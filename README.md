@@ -1,5 +1,5 @@
 [![CircleCI](https://circleci.com/gh/axle-h/mongo-repository/tree/master.svg?&style=shield)](https://circleci.com/gh/axle-h/mongo-repository/tree/master)
-[![NuGet](https://img.shields.io/nuget/v/MongoDB.Extensions.Repository.svg)](https://www.nuget.org/packages/MongoDB.Extensions.Repository/)
+[![NuGet](https://img.shields.io/nuget/v/MongoDB.Extensions.Repository.svg)](https://www.nuget.org/packages/MongoDB.Extensions.Repository)
 
 # mongo-repository
 
